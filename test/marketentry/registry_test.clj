@@ -1,0 +1,110 @@
+(ns marketentry.registry-test
+  (:require [clojure.test :refer [deftest is testing]]
+            [marketentry.registry :as registry]))
+
+(deftest engagement-fee-recompute
+  (let [e {:base-fee 500000 :monthly-rate 30000 :monitoring-months 12 :claimed-fee 860000.0}]
+    (is (== 860000.0 (registry/compute-engagement-fee e)))
+    (is (true? (registry/engagement-fee-matches-claim? e))))
+  (let [bad {:base-fee 500000 :monthly-rate 30000 :monitoring-months 12 :claimed-fee 999000.0}]
+    (is (false? (registry/engagement-fee-matches-claim? bad)))))
+
+(deftest register-draft-and-submit
+  (let [d (registry/register-draft "eng-1" "VCT" 0)
+        s (registry/register-submit "eng-1" "VCT" 0)]
+    (is (= "VCT-DFT-000000" (get d "draft_number")))
+    (is (= "VCT-SUB-000000" (get s "submit_number")))
+    (is (nil? (get-in d ["certificate" "proof"])))
+    (is (= "draft-unsigned" (get-in s ["certificate" "status"])))))
+
+(deftest register-requires-ids
+  (is (thrown? Exception (registry/register-draft "" "VCT" 0)))
+  (is (thrown? Exception (registry/register-submit "eng-1" "" 0))))
+
+(deftest lawful-temporary-debarment-years
+  (testing "Schedule 4 §7(1)(c)'s own discrete enum {1, 3, 5} -- lawful"
+    (is (true? (registry/lawful-temporary-debarment-years? 1)))
+    (is (true? (registry/lawful-temporary-debarment-years? 3)))
+    (is (true? (registry/lawful-temporary-debarment-years? 5))))
+  (testing "any other value, or absent -- unlawful (a discrete SET, not a min/max range)"
+    (is (false? (registry/lawful-temporary-debarment-years? 2)))
+    (is (false? (registry/lawful-temporary-debarment-years? 4)))
+    (is (false? (registry/lawful-temporary-debarment-years? 0)))
+    (is (false? (registry/lawful-temporary-debarment-years? 6)))
+    (is (false? (registry/lawful-temporary-debarment-years? nil)))))
+
+(deftest compute-debarment-end-bumps-years-only
+  (testing "a whole-year bump, same month/day, no month-carry arithmetic needed"
+    (is (= "2027-06-01" (registry/compute-debarment-end "2026-06-01" 1))))
+  (testing "the full 5-year statutory maximum"
+    (is (= "2029-06-01" (registry/compute-debarment-end "2024-06-01" 5))))
+  (testing "missing inputs"
+    (is (nil? (registry/compute-debarment-end nil 1)))
+    (is (nil? (registry/compute-debarment-end "2026-01-15" nil)))))
+
+(deftest debarment-committee-active-is-a-pure-state-check
+  (testing "an established committee with no final sanction kind yet -> active, regardless of any date"
+    (is (true? (registry/debarment-committee-active?
+                {:debarment-committee-established? true :debarment-sanction-kind nil}))))
+  (testing "no committee established -> not active"
+    (is (false? (registry/debarment-committee-active?
+                 {:debarment-committee-established? false :debarment-sanction-kind nil}))))
+  (testing "a committee that already concluded with a final sanction kind -> no longer 'active' by this leg"
+    (is (false? (registry/debarment-committee-active?
+                 {:debarment-committee-established? true :debarment-sanction-kind :reprimand})))))
+
+(deftest debarment-disqualifying-interim-leg
+  (testing "an ACTIVE, unresolved Debarment Committee case -> disqualifying, no date arithmetic involved (s.64(3))"
+    (is (true? (registry/debarment-disqualifying?
+                {:debarment-committee-established? true :debarment-sanction-kind nil
+                 :submission-date "2026-07-23"})))))
+
+(deftest debarment-disqualifying-reprimand-never-disqualifies
+  (testing "Schedule 4 §7(1)(a): 'falls short of debarment'"
+    (is (false? (registry/debarment-disqualifying?
+                 {:debarment-committee-established? false :debarment-sanction-kind :reprimand
+                  :submission-date "2026-07-23"})))))
+
+(deftest debarment-disqualifying-permanent-has-no-expiry
+  (testing "Schedule 4 §7(1)(d): ALWAYS disqualifying, no date on file needed at all"
+    (is (true? (registry/debarment-disqualifying?
+                {:debarment-committee-established? false :debarment-sanction-kind :permanent
+                 :submission-date "2026-07-23"})))))
+
+(deftest debarment-disqualifying-temporary-window
+  (testing "submission date falls within the temporary-debarment window -> disqualifying"
+    (is (true? (registry/debarment-disqualifying?
+                {:debarment-committee-established? false :debarment-sanction-kind :temporary
+                 :debarment-sanction-start-date "2026-01-01" :debarment-sanction-years 1
+                 :submission-date "2026-07-23"}))))
+  (testing "submission date strictly AFTER the computed window end -> no longer disqualifying"
+    (is (false? (registry/debarment-disqualifying?
+                 {:debarment-committee-established? false :debarment-sanction-kind :temporary
+                  :debarment-sanction-start-date "2024-06-01" :debarment-sanction-years 1
+                  :submission-date "2026-07-23"}))))
+  (testing "an out-of-set :debarment-sanction-years is an untrustworthy record -> disqualifying regardless of the apparent window"
+    (is (true? (registry/debarment-disqualifying?
+                {:debarment-committee-established? false :debarment-sanction-kind :temporary
+                 :debarment-sanction-start-date "2020-01-01" :debarment-sanction-years 2
+                 :submission-date "2026-07-23"})))))
+
+(deftest debarment-disqualifying-conditional-non-debarment
+  (testing "breached -> converts to a temporary-debarment recompute (Schedule 4 §7(1)(b))"
+    (is (true? (registry/debarment-disqualifying?
+                {:debarment-committee-established? false :debarment-sanction-kind :conditional-non-debarment
+                 :conditional-non-debarment-breached? true
+                 :debarment-sanction-start-date "2026-01-01" :debarment-sanction-years 3
+                 :submission-date "2026-07-23"}))))
+  (testing "NOT breached -> never disqualifying, the threatened conversion never fired"
+    (is (false? (registry/debarment-disqualifying?
+                 {:debarment-committee-established? false :debarment-sanction-kind :conditional-non-debarment
+                  :conditional-non-debarment-breached? false
+                  :debarment-sanction-start-date "2026-01-01" :debarment-sanction-years 3
+                  :submission-date "2026-07-23"})))))
+
+(deftest debarment-disqualifying-no-case-on-file
+  (testing "no committee established, no sanction kind -> never disqualifying"
+    (is (false? (registry/debarment-disqualifying?
+                 {:debarment-committee-established? false :debarment-sanction-kind nil
+                  :submission-date "2026-07-23"})))
+    (is (false? (registry/debarment-disqualifying? {})))))
