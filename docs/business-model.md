@@ -83,6 +83,6 @@
   entirely (investment/import-duty incentives administered by the
   Customs & Excise Department, not public-procurement bidding) --
   deliberately out of scope for this blueprint. See
-  `src/marketentry/facts.cljc` for the honest research finding on that
+  `src/marketentry/facts.cljk` for the honest research finding on that
   Act (chapter number and administering authority confirmed, specific
   provisions not extracted this session).

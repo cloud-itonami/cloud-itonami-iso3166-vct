@@ -42,7 +42,7 @@ full in-house compliance department.
   Excise Department's own page) is a genuine, currently-administered
   investment-incentive instrument but OUT OF SCOPE for this blueprint's
   public-procurement market-entry domain -- documented as a
-  supplementary finding in `src/marketentry/facts.cljc`, its own
+  supplementary finding in `src/marketentry/facts.cljk`, its own
   provisions not extracted this session (an honest, disclosed gap).
 
 ## Implementation (R0)
@@ -53,7 +53,7 @@ full in-house compliance department.
 | Governor | `:market-entry-compliance-governor` |
 | Ops | `:engagement/intake` · `:jurisdiction/assess` · `:filing/draft` · `:filing/submit` |
 | Flagship HARD check | `debarment-disqualifying` (Public Procurement Act, 2018, Act No. 34 of 2018 s.64 'Suspension and debarment' + Schedule 4 'Suspension and Debarment Procedure' -- a STATE-AND-KIND-DISPATCHED disqualification lifecycle: an interim automatic suspension the moment a Debarment Committee is established (no date arithmetic), plus four qualitatively different final sanction kinds -- Reprimand (never disqualifying), Conditional Non-Debarment (disqualifying only if breached), Temporary Debarment (a discrete {1,3,5}-year enum window), Permanent Debarment (always disqualifying, no expiry) -- independently recomputed from the engagement's own declared ground truth, see `docs/adr/0001-architecture.md`) |
-| Compliance catalog | `src/statute/facts.cljc` -- Companies Act, Protection of Employment Act, Income Tax Act, Tax Administration Act |
+| Compliance catalog | `src/statute/facts.cljk` -- Companies Act, Protection of Employment Act, Income Tax Act, Tax Administration Act |
 | Tests | `clojure -M:dev:test` |
 | Demo | `clojure -M:dev:run` |
 | Architecture ADR | [`docs/adr/0001-architecture.md`](docs/adr/0001-architecture.md) |
@@ -124,7 +124,7 @@ Alongside the market-entry / statute catalogs, this repo carries a
 `com-junkawasaki/root`) — national dishes, protected products, beverages,
 crafts, festivals and heritage sites for Saint Vincent and the Grenadines:
 
-- `src/culture/facts.cljc` — the catalog, source of truth (keyed by
+- `src/culture/facts.cljk` — the catalog, source of truth (keyed by
   uppercase ISO3, mirroring `statute.facts`).
 - `schema/culture.edn` — DataScript schema.
 - `data/culture-tx.edn` — derived DataScript tx-data (regenerated from
