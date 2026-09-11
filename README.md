@@ -54,8 +54,8 @@ full in-house compliance department.
 | Ops | `:engagement/intake` · `:jurisdiction/assess` · `:filing/draft` · `:filing/submit` |
 | Flagship HARD check | `debarment-disqualifying` (Public Procurement Act, 2018, Act No. 34 of 2018 s.64 'Suspension and debarment' + Schedule 4 'Suspension and Debarment Procedure' -- a STATE-AND-KIND-DISPATCHED disqualification lifecycle: an interim automatic suspension the moment a Debarment Committee is established (no date arithmetic), plus four qualitatively different final sanction kinds -- Reprimand (never disqualifying), Conditional Non-Debarment (disqualifying only if breached), Temporary Debarment (a discrete {1,3,5}-year enum window), Permanent Debarment (always disqualifying, no expiry) -- independently recomputed from the engagement's own declared ground truth, see `docs/adr/0001-architecture.md`) |
 | Compliance catalog | `src/statute/facts.cljk` -- Companies Act, Protection of Employment Act, Income Tax Act, Tax Administration Act |
-| Tests | `clojure -M:dev:test` |
-| Demo | `clojure -M:dev:run` |
+| Tests | `kbb -M:dev:test` |
+| Demo | `kbb -M:dev:run` |
 | Architecture ADR | [`docs/adr/0001-architecture.md`](docs/adr/0001-architecture.md) |
 
 `:filing/submit` is never in any phase's `:auto` set -- human sign-off
